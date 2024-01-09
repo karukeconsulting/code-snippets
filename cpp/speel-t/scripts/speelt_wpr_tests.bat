@@ -1,0 +1,1 @@
+wpr.exe -start SpeelTRecorder.wprp!SpeelTLoggingProvider.Verbose -filemode && speelt-tests-workbook.exe && wpr.exe -stop SpeelTRecorder.etl

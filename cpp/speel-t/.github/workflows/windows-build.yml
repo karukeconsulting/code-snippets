@@ -1,0 +1,80 @@
+name: Windows CMake Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
+  SPEELT_CMAKE_SOURCE_DIR: '${{ github.workspace }}'
+  SPEELT_CMAKE_BINARY_DIR: '${{ github.workspace }}/build'
+
+jobs:
+  build:
+    concurrency: ${{ github.workflow }}-${{ github.job }}-${{ github.ref_name }}
+
+    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
+    # You can convert this to a matrix build if you need cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: windows-latest
+
+    steps:
+    - name: 'Install ninja.exe'
+      run: choco install ninja
+      shell: cmd
+
+    - uses: actions/checkout@v2
+
+    - name: Store variables in env context
+      run: >
+        echo "OUR_HOMEDRIVE=$HOMEDRIVE" >> $GITHUB_ENV &&
+        echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV &&
+        echo "VCVARSALL_PATH=\"C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvarsall.bat\"" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Display Environment Variables
+      run: "Get-ChildItem -Path Env:"
+      shell: powershell
+
+    - name: 'Setup NuGet Credentials'
+      run: >
+        `vcpkg fetch nuget | tail -n 1`
+        sources add
+        -source ""
+        -storepasswordincleartext
+        -name "GitHub"
+        -username ""
+        -password "${{ secrets.GITHUB_TOKEN }}"
+      shell: bash
+
+    - name: Bootstrap vcpkg
+      run: "cd ${{ env.VCPKG_ROOT }} && bootstrap-vcpkg.bat"
+
+    - name: Configure CMake
+      run: "cd ${{ github.workspace }}/cpp && ${{ env.VCVARSALL_PATH }} x64 10.0.20348.0 -vcvars_ver=14.31 -vcvars_spectre_libs=spectre && cmake --preset win-rel"
+      shell: cmd
+
+    - name: Build
+      run: "cd ${{ github.workspace }}/cpp && ${{ env.VCVARSALL_PATH }} x64 10.0.20348.0 -vcvars_ver=14.31 -vcvars_spectre_libs=spectre && cmake --build --preset win-rel -v"
+      shell: cmd
+
+    - name: Test
+      run: "cd ${{ github.workspace }}/cpp && ctest --preset win-rel-test --output-on-failure"
+      shell: cmd
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: speelt-windows-release
+        path: ${{ env.OUR_HOMEDRIVE }}/s_b/win-rel/*
+        if-no-files-found: error
+
+    - name: Upload vcpkg buildtree log
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: speelt-vcpkg-buildtree-log
+        path: ${{ env.VCPKG_ROOT }}/buildtrees/**/*.log

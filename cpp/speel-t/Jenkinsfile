@@ -1,0 +1,154 @@
+@Library('camunda-community') _
+
+import org.jenkinsci.plugins.pipeline.modeldefinition.Utils
+
+def cond_stage(name, execute, block) {
+    return stage(name, execute ? block : {
+        echo "skipped stage $name"
+        Utils.markStageSkippedForConditional("$name")
+    })
+}
+
+pipeline {
+    agent none
+    stages {
+        // C++
+        stage("cpp_build") {
+            steps {
+                dynamicMatrixMultiGroups([
+                    [
+                        failFast: false,
+                        axes: [
+                            AGENT_LABEL: ['windows10', 'windows11']
+                        ],
+                        actions: {
+                            node("${AGENT_LABEL}") {
+                                stage("'${MATRIX_STAGE_NAME}' agent environment") {
+                                    bat 'cmake --version'
+                                    pwsh 'pwsh -v'
+                                    pwsh 'get-childitem env:'
+                                    pwsh '$env:Path'
+                                }
+                                
+                                stage("Code checkout") {
+                                    if (env.JOB_NAME == "test-local") {
+                                        checkout filesystem(clearWorkspace: true, filterSettings: [includeFilter: false, selectors: [[wildcard: '**/.git/**'], [wildcard: '**/.vs/**'], [wildcard: '**/.github/**'], [wildcard: '**/build/**']]], path: '\\\\LOCAL-DESKTOP-R\\speel-t')
+                                        pwsh "Remove-Item ${WORKSPACE}/cpp/build/* -Recurse"
+                                    } else {
+                                        checkout([$class: 'GitSCM', branches: [[name: "*/${BRANCH_NAME}"]], extensions: [[$class: 'WipeWorkspace']], userRemoteConfigs: [[credentialsId: '', url: '']]])
+                                    }
+                                }
+
+                                stage("'${MATRIX_STAGE_NAME}' robocopy") {
+                                    bat "scripts/speelt_robocopy.bat ${WORKSPACE}/docs ${HOMEDRIVE}/s_b/win-dbg/docs /E"
+                                    bat "scripts/speelt_robocopy.bat ${WORKSPACE}/tests ${HOMEDRIVE}/s_b/win-dbg/tests /E"
+
+                                    bat "scripts/speelt_robocopy.bat ${WORKSPACE}/docs ${HOMEDRIVE}/s_b/win-rel/docs /E"
+                                    bat "scripts/speelt_robocopy.bat ${WORKSPACE}/tests ${HOMEDRIVE}/s_b/win-rel/tests /E"
+
+                                    bat "scripts/speelt_robocopy.bat ${WORKSPACE}/docs ${HOMEDRIVE}/s_b/win-reldeb/docs /E"
+                                    bat "scripts/speelt_robocopy.bat ${WORKSPACE}/tests ${HOMEDRIVE}/s_b/win-reldeb/tests /E"
+                                }
+
+                                /*********/
+                                /* Debug */
+                                /*********/
+
+                                // Configure & Build
+                                stage("'${MATRIX_STAGE_NAME}' Debug configure, build and test") {
+                                    bat "cmake -E rm -rf ${HOMEDRIVE}\\s_b\\win-dbg"
+                                    bat "cd ${WORKSPACE}\\cpp && \"%VCVARSALL_PATH%\" x64 -vcvars_ver=14.31 -vcvars_spectre_libs=spectre && cmake --preset win-dbg --trace-expand --trace-redirect=jenkins_win_dbg_cmake_configure_trace.txt"
+                                    pwsh "get-childitem env: | out-file -file ${HOMEDRIVE}\\s_b\\win-dbg\\debug_env_log.txt"
+                                    bat "cd ${WORKSPACE}\\cpp && \"%VCVARSALL_PATH%\" x64 -vcvars_ver=14.31 -vcvars_spectre_libs=spectre && cmake --build --preset win-dbg --verbose"
+                                }
+                                cond_stage("'${MATRIX_STAGE_NAME}' archiving build items", currentBuild.currentResult == "SUCCESS") {
+                                    archiveArtifacts artifacts: "cpp/jenkins_win_dbg_cmake_configure_trace.txt", fingerprint: true
+                                    bat "scripts/speelt_robocopy.bat ${HOMEDRIVE}/s_b/win-dbg ${WORKSPACE}/artifacts/win-dbg *.exe *.dll *.pdb *.txt"
+                                    archiveArtifacts artifacts: "artifacts/win-dbg/*.*", fingerprint: true
+                                }
+                                // Test
+                                stage("'${MATRIX_STAGE_NAME}' Debug test") {
+                                    bat "cd ${WORKSPACE}\\cpp && ctest --preset win-dbg-test --output-on-failure --output-junit ./Testing/debug_tests.xml --no-compress-output"
+                                }
+
+                                /***********/
+                                /* Release */
+                                /***********/
+
+                                // Configure & Build
+                                stage("'${MATRIX_STAGE_NAME}' Release configure, build and test") {
+                                    bat "cmake -E rm -rf ${HOMEDRIVE}\\s_b\\win-rel"
+                                    bat "cd ${WORKSPACE}\\cpp && \"%VCVARSALL_PATH%\" x64 -vcvars_ver=14.31 -vcvars_spectre_libs=spectre && cmake --preset win-rel --trace-expand --trace-redirect=jenkins_win_rel_cmake_configure_trace.txt"
+                                    pwsh "get-childitem env: | out-file -file ${HOMEDRIVE}\\s_b\\win-rel\\release_env_log.txt"
+                                    bat "cd ${WORKSPACE}\\cpp && \"%VCVARSALL_PATH%\" x64 -vcvars_ver=14.31 -vcvars_spectre_libs=spectre && cmake --build --preset win-rel --verbose"
+                                }
+                                cond_stage("'${MATRIX_STAGE_NAME}' archiving build items", currentBuild.currentResult == "SUCCESS") {
+                                    archiveArtifacts artifacts: "cpp/jenkins_win_rel_cmake_configure_trace.txt", fingerprint: true
+                                    bat "scripts/speelt_robocopy.bat ${HOMEDRIVE}/s_b/win-rel ${WORKSPACE}/artifacts/win-rel *.exe *.dll *.pdb *.txt"
+                                    archiveArtifacts artifacts: "artifacts/win-rel/*.*", fingerprint: true
+                                }
+                                // Test
+                                stage("'${MATRIX_STAGE_NAME}' Release test") {
+                                    bat "cd ${WORKSPACE}\\cpp && ctest --preset win-rel-test --output-on-failure --output-junit ./Testing/release_tests.xml --no-compress-output"
+                                }
+
+                                /******************/
+                                /* RelWithDebInfo */
+                                /******************/
+
+                                // Configure & Build
+                                stage("'${MATRIX_STAGE_NAME}' RelWithDebInfo configure, build and test") {
+                                    bat "cmake -E rm -rf ${HOMEDRIVE}\\s_b\\win-reldeb"
+                                    bat "cd ${WORKSPACE}\\cpp && \"%VCVARSALL_PATH%\" x64 -vcvars_ver=14.31 -vcvars_spectre_libs=spectre && cmake --preset win-reldeb --trace-expand --trace-redirect=jenkins_win_reldeb_cmake_configure_trace.txt"
+                                    pwsh "get-childitem env: | out-file -file ${HOMEDRIVE}\\s_b\\win-reldeb\\relwithdebinfo_env_log.txt"
+                                    bat "cd ${WORKSPACE}\\cpp && \"%VCVARSALL_PATH%\" x64 -vcvars_ver=14.31 -vcvars_spectre_libs=spectre && cmake --build --preset win-reldeb --verbose"
+                                }
+                                cond_stage("'${MATRIX_STAGE_NAME}' archiving cmake trace", currentBuild.currentResult == "SUCCESS") {
+                                    
+                                }
+                                cond_stage("'${MATRIX_STAGE_NAME}' archiving build items", currentBuild.currentResult == "SUCCESS") {
+                                    archiveArtifacts artifacts: "cpp/jenkins_win_reldeb_cmake_configure_trace.txt", fingerprint: true
+                                    bat "scripts/speelt_robocopy.bat ${HOMEDRIVE}/s_b/win-reldeb ${WORKSPACE}/artifacts/win-reldeb *.exe *.dll *.pdb *.txt"
+                                    archiveArtifacts artifacts: "artifacts/win-reldeb/*.*", fingerprint: true
+                                }
+                                // Test
+                                stage("'${MATRIX_STAGE_NAME}' RelWithDebInfo test") {
+                                    bat "cd ${WORKSPACE}\\cpp && ctest --preset win-reldeb-test --output-on-failure --output-junit ./Testing/relwithdebinfo_tests.xml --no-compress-output"
+                                }
+
+                                cond_stage("'${MATRIX_STAGE_NAME}' xunit", currentBuild.currentResult == "SUCCESS") {
+                                    bat "scripts/speelt_robocopy.bat ${HOMEDRIVE}/s_b/win-dbg/Testing ${WORKSPACE}/Testing/win-dbg /E"
+                                    bat "scripts/speelt_robocopy.bat ${HOMEDRIVE}/s_b/win-rel/Testing ${WORKSPACE}/Testing/win-rel /E"
+                                    bat "scripts/speelt_robocopy.bat ${HOMEDRIVE}/s_b/win-reldeb/Testing ${WORKSPACE}/Testing/win-reldeb /E"
+                                    xunit(
+                                        thresholds: [ skipped(failureThreshold: '0'), failed(failureThreshold: '0') ],
+                                        tools: [GoogleTest(pattern: 'Testing/**/*.xml', skipNoTestFiles: false, stopProcessingIfError: true)]
+                                    )
+                                }
+                            }
+                        }
+                    ]
+
+                    /*
+                    [
+                        failFast: true,
+                        axes: [
+                            AGENT_LABEL: ['linux'],
+                            CONFIGURATION: ['debug', 'release']
+                        ],
+                        actions: {
+                            stage("'${MATRIX_STAGE_NAME}' agent environment") {
+                                node("${AGENT_LABEL}") {
+                                    pwsh 'pwsh -v'
+                                    pwsh 'get-childitem env:'
+                                    pwsh '$env:PATH'
+                                }
+                            }
+                        }
+                    ]
+                    */
+                ])
+            }
+        }
+    }
+}

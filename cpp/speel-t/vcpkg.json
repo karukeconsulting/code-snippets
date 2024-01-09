@@ -1,0 +1,22 @@
+{
+  "name": "speelt-app",
+  "version-string": "0.1.0",
+  "builtin-baseline": "ec547c15d6b9b426c1d9666adc9a79fd2c46d79e",
+  "dependencies": [
+    "gtest",
+    "bzip2",
+    "libzip",
+    "sentry-native",
+    "spdlog"
+  ],
+  "overrides": [
+    {
+      "name": "sentry-native",
+      "version": "0.4.15"
+    },
+    {
+      "name": "spdlog",
+      "version": "1.10.0"
+    }
+  ]
+}

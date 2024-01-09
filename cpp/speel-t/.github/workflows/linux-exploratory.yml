@@ -1,0 +1,20 @@
+name: Linux Exploratory
+
+on: workflow_dispatch
+
+jobs:
+  explore:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Display vcpkg version
+      run: vcpkg --version
+
+    - name: Display vcpkg binary caching help
+      run: vcpkg help binarycaching
+
+    - name: Display Environment Variables
+      run: printenv | sort
+
+    - name: Display vcpkg (recursive) directory content
+      run: ls -al --recursive $VCPKG_INSTALLATION_ROOT/scripts

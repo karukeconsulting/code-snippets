@@ -1,0 +1,23 @@
+name: Windows Exploratory
+
+on: workflow_dispatch
+
+jobs:
+  explore:
+    runs-on: windows-latest
+
+    steps:
+    - name: Display vcpkg version
+      run: vcpkg --version
+
+    - name: Display vcpkg binary caching help
+      run: vcpkg help binarycaching
+
+    - name: Display Environment Variables
+      run: "Get-ChildItem -Path Env:"
+
+    - name: Display Path Variable
+      run: "$env:Path"
+
+    - name: Display vcpkg (recursive) directory content
+      run: Get-ChildItem -Path $Env:VCPKG_INSTALLATION_ROOT -Recurse

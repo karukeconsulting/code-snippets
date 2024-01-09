@@ -1,0 +1,149 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 11,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-cxx-compiler",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_MAKE_PROGRAM": "ninja.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_CXX_LINK_EXECUTABLE": "link.exe",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_C_LINK_EXECUTABLE": "link.exe",
+        "CMAKE_RC_COMPILER": "rc.exe",
+        "CMAKE_MT": "mt.exe",
+        "CMAKE_PREFIX_PATH": "$env{VCPKG_INSTALLATION_ROOT}/packages/gtest_x64-windows/share/GTest;$env{VCPKG_INSTALLATION_ROOT}/packages/libzip_x64-windows/share/libzip;$env{VCPKG_INSTALLATION_ROOT}/packages/bzip2_x64-windows/share/bzip2",
+        "BZIP2_INCLUDE_DIR": "$env{VCPKG_INSTALLATION_ROOT}/packages/bzip2_x64-windows/include"
+      },
+      "environment": {
+        "SPEELT_CMAKE_SOURCE_DIR": "${sourceDir}",
+        "SPEELT_CMAKE_BINARY_DIR": "$env{HOMEDRIVE}/s_b"
+      }
+    },
+    {
+      "name": "win-dbg",
+      "inherits": "windows-cxx-compiler",
+      "generator": "Ninja",
+      "toolchainFile": "$env{VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "binaryDir": "$env{SPEELT_CMAKE_BINARY_DIR}/win-dbg"
+    },
+    {
+      "name": "win-rel",
+      "inherits": "windows-cxx-compiler",
+      "generator": "Ninja",
+      "toolchainFile": "$env{VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "binaryDir": "$env{SPEELT_CMAKE_BINARY_DIR}/win-rel"
+    },
+    {
+      "name": "win-reldeb",
+      "inherits": "windows-cxx-compiler",
+      "generator": "Ninja",
+      "toolchainFile": "$env{VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      },
+      "binaryDir": "$env{SPEELT_CMAKE_BINARY_DIR}/win-reldeb"
+    },
+    {
+      "name": "linux-cxx-compiler",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_MAKE_PROGRAM": "ninja",
+        "CMAKE_CXX_COMPILER": "clang",
+        "CMAKE_CXX_LINK_EXECUTABLE": "lld",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_C_LINK_EXECUTABLE": "lld",
+        "BZIP2_INCLUDE_DIR": "$env{VCPKG_INSTALLATION_ROOT}/packages/bzip2_x64-linux/include"
+      },
+      "environment": {
+        "SPEELT_CMAKE_SOURCE_DIR": "${sourceDir}",
+        "SPEELT_CMAKE_BINARY_DIR": "${sourceDir}/build"
+      }
+    },
+    {
+      "name": "linux-x64-debug",
+      "inherits": "linux-cxx-compiler",
+      "generator": "Ninja",
+      "toolchainFile": "$env{VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "binaryDir": "$env{SPEELT_CMAKE_BINARY_DIR}/linux-x64-debug"
+    },
+    {
+      "name": "linux-x64-release",
+      "inherits": "linux-cxx-compiler",
+      "generator": "Ninja",
+      "toolchainFile": "$env{VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "binaryDir": "$env{SPEELT_CMAKE_BINARY_DIR}/linux-x64-release"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "win-dbg",
+      "configuration": "Debug",
+      "configurePreset": "win-dbg"
+    },
+    {
+      "name": "win-rel",
+      "configuration": "Release",
+      "configurePreset": "win-rel"
+    },
+    {
+      "name": "win-reldeb",
+      "configuration": "RelWithDebInfo",
+      "configurePreset": "win-reldeb"
+    },
+    {
+      "name": "linux-x64-debug",
+      "configuration": "Debug",
+      "configurePreset": "linux-x64-debug"
+    },
+    {
+      "name": "linux-x64-release",
+      "configuration": "Release",
+      "configurePreset": "linux-x64-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "win-dbg-test",
+      "configurePreset": "win-dbg",
+      "configuration": "Debug"
+    },
+    {
+      "name": "win-rel-test",
+      "configurePreset": "win-rel",
+      "configuration": "Release"
+    },
+    {
+      "name": "win-reldeb-test",
+      "configurePreset": "win-reldeb",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-x64-debug-test",
+      "configurePreset": "linux-x64-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-x64-release-test",
+      "configurePreset": "linux-x64-release",
+      "configuration": "Release"
+    }
+  ]
+}

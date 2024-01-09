@@ -1,0 +1,5 @@
+class OpcFactoryHelper {
+public:
+	OpcFactoryHelper();
+
+};
